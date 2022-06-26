@@ -57,7 +57,7 @@ func (p edmxProperty) goType() string {
 		goType = "float64"
 	case "Edm.Boolean":
 		goType = "bool"
-	case "Edm.DateTime":
+	case "Edm.DateTime", "Edm.DateTimeOffset":
 		goType = "time.Time"
 	default:
 		if strings.HasPrefix(propertyType, p.schema.Namespace) {
