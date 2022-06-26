@@ -28,7 +28,8 @@ func Test_Generate_definition(t *testing.T) {
 	edmx, _ := getParsedEdmx()
 	peopleSet := edmx.EntitySets["People"]
 
-	assert.Equal(t, `func NewPersonCollection(wrapper odataClient.Wrapper) odataClient.ODataModelCollection[Person] {
+	assert.Equal(t, `//goland:noinspection GoUnusedExportedFunction
+func NewPersonCollection(wrapper odataClient.Wrapper) odataClient.ODataModelCollection[Person] {
 	return modelDefinition[Person]{client: wrapper.ODataClient(), name: "Person", url: "People"}
 }`, generateModelDefinition(peopleSet))
 }
