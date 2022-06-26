@@ -34,22 +34,29 @@ type edmxProperty struct {
 	Nullable string `xml:"Nullable,attr"`
 }
 
-func (p edmxProperty) goPlainType() string {
-	switch p.Type {
-	case "Edm.String":
-		return "string"
-	case "Edm.Int64":
-		return "int64"
-	}
-	return "interface{}"
-}
-
 func (p edmxProperty) goType() string {
-	plainType := p.goPlainType()
-	if p.Nullable == "" || strings.ToLower(p.Nullable) == "true" {
-		return "nullable.Nullable[" + plainType + "]"
+	propertyType := p.Type
+	isCollection := false
+	if strings.HasPrefix(p.Type, "Collection(") {
+		isCollection = true
+		propertyType = p.Type[11 : len(p.Type)-1]
 	}
-	return plainType
+	goType := "interface{}"
+	switch propertyType {
+	case "Edm.String":
+		goType = "string"
+	case "Edm.Int64":
+		goType = "int64"
+	}
+
+	if !isCollection && (p.Nullable == "" || strings.ToLower(p.Nullable) == "true") {
+		goType = "nullable.Nullable[" + goType + "]"
+	}
+
+	if isCollection {
+		goType = "[]" + goType
+	}
+	return goType
 }
 
 type edmxEntityType struct {
