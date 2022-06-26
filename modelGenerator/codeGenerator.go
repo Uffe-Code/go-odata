@@ -66,7 +66,7 @@ const (`, enum.Name, goType)
 	return goString + "\n)"
 }
 
-func generateCodeFromSchema(packageName string, schema edmxSchema) string {
+func generateCodeFromSchema(packageName string, dataService edmxDataServices) string {
 	goCode := fmt.Sprintf(`package %s
 
 import "github.com/Uffe-Code/go-nullable"
@@ -87,17 +87,19 @@ func (md modelDefinition[T]) DataSet(client odataClient.ODataClient) odataClient
 
 `, packageName)
 
-	for _, enum := range schema.EnumTypes {
-		goCode += "\n" + generateEnumStruct(enum) + "\n"
-	}
+	for _, schema := range dataService.Schemas {
+		for _, enum := range schema.EnumTypes {
+			goCode += "\n" + generateEnumStruct(enum) + "\n"
+		}
 
-	for _, complexType := range schema.ComplexTypes {
-		goCode += "\n" + generateModelStruct(complexType) + "\n"
-	}
+		for _, complexType := range schema.ComplexTypes {
+			goCode += "\n" + generateModelStruct(complexType) + "\n"
+		}
 
-	for _, set := range schema.EntitySets {
-		goCode += "\n" + generateModelStruct(set.getEntityType()) + "\n"
-		goCode += "\n" + generateModelDefinition(set) + "\n"
+		for _, set := range schema.EntitySets {
+			goCode += "\n" + generateModelStruct(set.getEntityType()) + "\n"
+			goCode += "\n" + generateModelDefinition(set) + "\n"
+		}
 	}
 
 	return goCode

@@ -6,15 +6,29 @@ import (
 	"strings"
 )
 
-type edmxEntitySet struct {
-	schema     edmxSchema
+type rawEdmxEntitySet struct {
 	Name       string `xml:"Name,attr"`
 	EntityType string `xml:"EntityType,attr"`
 }
 
+func (es rawEdmxEntitySet) toEntitySet(schema edmxSchema) edmxEntitySet {
+	return edmxEntitySet{
+		schema:     schema,
+		Name:       es.Name,
+		EntityType: es.EntityType,
+	}
+}
+
+type edmxEntitySet struct {
+	schema     edmxSchema
+	Name       string
+	EntityType string
+}
+
 func (s edmxEntitySet) getEntityType() edmxEntityType {
-	entityTypeKey := strings.Replace(s.EntityType, s.schema.Namespace+".", "", 1)
-	return s.schema.EntityTypes[entityTypeKey]
+	namespace := s.EntityType[0:strings.LastIndex(s.EntityType, ".")]
+	entityTypeKey := s.EntityType[len(namespace)+1 : len(s.EntityType)]
+	return s.schema.dataService.Schemas[namespace].EntityTypes[entityTypeKey]
 }
 
 type edmxProperty struct {
@@ -82,12 +96,13 @@ func (e rawEdmxEntityType) toEdmxEntityType(schema edmxSchema) edmxEntityType {
 }
 
 type edmxXmlData struct {
-	XMLName      xml.Name           `xml:"Edmx"`
-	Version      string             `xml:"Version,attr"`
-	DataServices []edmxDataServices `xml:"DataServices"`
+	XMLName      xml.Name              `xml:"Edmx"`
+	Version      string                `xml:"Version,attr"`
+	DataServices []rawEdmxDataServices `xml:"DataServices"`
 }
 
 type edmxSchema struct {
+	dataService  edmxDataServices
 	Namespace    string
 	EntityTypes  map[string]edmxEntityType
 	EntitySets   map[string]edmxEntitySet
@@ -95,8 +110,21 @@ type edmxSchema struct {
 	ComplexTypes map[string]edmxEntityType
 }
 
-type edmxDataServices struct {
+type rawEdmxDataServices struct {
 	Schemas []rawEdmxSchema `xml:"Schema"`
+}
+
+func (ds *rawEdmxDataServices) toDataService() edmxDataServices {
+	dataService := &edmxDataServices{Schemas: map[string]edmxSchema{}}
+	for _, s := range ds.Schemas {
+		sc := s.toSchema(*dataService)
+		dataService.Schemas[sc.Namespace] = sc
+	}
+	return *dataService
+}
+
+type edmxDataServices struct {
+	Schemas map[string]edmxSchema
 }
 
 type rawEdmxSchema struct {
@@ -108,8 +136,9 @@ type rawEdmxSchema struct {
 	ComplexTypes []rawEdmxEntityType `xml:"ComplexType"`
 }
 
-func (s rawEdmxSchema) toSchema() edmxSchema {
+func (s rawEdmxSchema) toSchema(services edmxDataServices) edmxSchema {
 	schema := &edmxSchema{
+		dataService:  services,
 		Namespace:    s.Namespace,
 		EntityTypes:  map[string]edmxEntityType{},
 		EntitySets:   map[string]edmxEntitySet{},
@@ -120,9 +149,9 @@ func (s rawEdmxSchema) toSchema() edmxSchema {
 		schema.EntityTypes[e.Name] = e.toEdmxEntityType(*schema)
 	}
 	for _, c := range s.Containers {
-		for _, s := range c.EntitySets {
-			s.schema = *schema
-			schema.EntitySets[s.Name] = s
+		for _, es := range c.EntitySets {
+			entitySet := es.toEntitySet(*schema)
+			schema.EntitySets[entitySet.Name] = entitySet
 		}
 	}
 	for _, enum := range s.EnumTypes {
@@ -135,7 +164,7 @@ func (s rawEdmxSchema) toSchema() edmxSchema {
 }
 
 type rawEdmxContainer struct {
-	EntitySets []edmxEntitySet `xml:"EntitySet"`
+	EntitySets []rawEdmxEntitySet `xml:"EntitySet"`
 }
 
 type edmxEnumType struct {
@@ -150,25 +179,30 @@ type edmxEnumMember struct {
 	Value   string   `xml:"Value,attr"`
 }
 
-func parseEdmx(xmlData []byte) (edmxSchema, error) {
+type apiErrorMessage struct {
+	Message string `xml:"message"`
+}
+
+func parseEdmx(xmlData []byte) (edmxDataServices, error) {
 	var edmxData edmxXmlData
 	err := xml.Unmarshal(xmlData, &edmxData)
 	if err != nil {
-		return edmxSchema{}, err
+		var apiErr apiErrorMessage
+		err2 := xml.Unmarshal(xmlData, &apiErr)
+		if err2 == nil {
+			return edmxDataServices{}, fmt.Errorf("error from API: %s", apiErr.Message)
+		}
+		return edmxDataServices{}, err
 	}
 
 	if edmxData.Version != "4.0" {
-		return edmxSchema{}, fmt.Errorf("only version 4.0 is supported, got %s", edmxData.Version)
+		return edmxDataServices{}, fmt.Errorf("only version 4.0 is supported, got %s", edmxData.Version)
 	}
 
 	if len(edmxData.DataServices) != 1 {
-		return edmxSchema{}, fmt.Errorf("unexpected amount of <edmx:DataServices> in Edmx source, got %d and expected 1", len(edmxData.DataServices))
+		return edmxDataServices{}, fmt.Errorf("unexpected amount of <edmx:DataServices> in Edmx source, got %d and expected 1", len(edmxData.DataServices))
 	}
 
 	dataServices := edmxData.DataServices[0]
-	if len(dataServices.Schemas) != 1 {
-		return edmxSchema{}, fmt.Errorf("unexpected amount of Schema in Edmx source, got %d and expected 1", len(dataServices.Schemas))
-	}
-
-	return dataServices.Schemas[0].toSchema(), nil
+	return dataServices.toDataService(), nil
 }

@@ -2,8 +2,9 @@ package modelGenerator
 
 import (
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path/filepath"
+	"strings"
 )
 
 type Generator struct {
@@ -12,7 +13,7 @@ type Generator struct {
 }
 
 func (g Generator) metadataUrl() string {
-	return g.ApiUrl + "$metadata"
+	return strings.TrimRight(g.ApiUrl, "/") + "/$metadata"
 }
 
 func (g Generator) GenerateCode() error {
@@ -30,5 +31,10 @@ func (g Generator) GenerateCode() error {
 	code := generateCodeFromSchema(packageName, edmx)
 	filePath := fmt.Sprintf("%s%s%s", dirPath, string(filepath.Separator), "modelDefinitions.go")
 
-	return ioutil.WriteFile(filePath, []byte(code), 0777)
+	file, err := os.Create(filePath)
+	if err != nil {
+		return err
+	}
+	_, err = file.WriteString(code)
+	return err
 }
