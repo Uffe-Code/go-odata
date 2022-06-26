@@ -18,7 +18,7 @@ type ODataDataSet[ModelT any, Def ODataModelDefinition[ModelT]] interface {
 	getSingleUrl(modelId int) string
 }
 
-func newDataSet[ModelT any, Def ODataModelDefinition[ModelT]](client ODataClient, modelDefinition Def) ODataDataSet[ModelT, Def] {
+func NewDataSet[ModelT any, Def ODataModelDefinition[ModelT]](client ODataClient, modelDefinition Def) ODataDataSet[ModelT, Def] {
 	return odataDataSet[ModelT, Def]{
 		client:          client.(*oDataClient),
 		modelDefinition: modelDefinition,

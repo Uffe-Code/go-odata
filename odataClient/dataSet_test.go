@@ -21,7 +21,7 @@ type testModelDefinition[T any] struct {
 }
 
 func (t testModelDefinition[T]) DataSet(client ODataClient) ODataDataSet[T, ODataModelDefinition[T]] {
-	return newDataSet[T](client, t)
+	return NewDataSet[T](client, t)
 }
 
 func (t testModelDefinition[T]) Name() string {

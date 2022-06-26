@@ -6,8 +6,7 @@ import (
 )
 
 func Test_Generate_struct(t *testing.T) {
-	edmx, _ := parseEdmx([]byte(edmxXmlString))
-
+	edmx, _ := getParsedEdmx()
 	peopleSet := edmx.EntitySets["People"]
 
 	assert.Equal(t, `type Person struct {
@@ -22,5 +21,26 @@ func Test_Generate_struct(t *testing.T) {
 	LastName nullable.Nullable[string]
 	MiddleName nullable.Nullable[string]
 	UserName string
-}`, generateModelStruct(peopleSet))
+}`, generateModelStruct(peopleSet.getEntityType()))
+}
+
+func Test_Generate_definition(t *testing.T) {
+	edmx, _ := getParsedEdmx()
+	peopleSet := edmx.EntitySets["People"]
+
+	assert.Equal(t, `func PersonDefinition() odataClient.ODataModelCollection[Person] {
+	return modelDefinition{name: "Person", url: "People"}
+}`, generateModelDefinition(peopleSet))
+}
+
+func Test_Generate_enum(t *testing.T) {
+	edmx, _ := getParsedEdmx()
+	genderEnum := edmx.EnumTypes["PersonGender"]
+	assert.Equal(t, `type PersonGender int64
+
+const (
+	Male PersonGender = 0
+	Female PersonGender = 1
+	Unknown PersonGender = 2
+)`, generateEnumStruct(genderEnum))
 }

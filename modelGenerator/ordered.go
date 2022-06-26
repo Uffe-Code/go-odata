@@ -2,8 +2,12 @@ package modelGenerator
 
 import "sort"
 
-func sortedKeys[V any](m map[string]V) []string {
-	keys := make([]string, len(m))
+type ordered interface {
+	int | int64 | string
+}
+
+func sortedKeys[V any, K ordered](m map[K]V) []K {
+	keys := make([]K, len(m))
 	i := 0
 	for k := range m {
 		keys[i] = k

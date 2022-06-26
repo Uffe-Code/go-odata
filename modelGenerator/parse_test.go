@@ -177,8 +177,20 @@ var edmxXmlString string = `This XML file does not appear to have any style info
 </edmx:DataServices>
 </edmx:Edmx>`
 
+var parsedEdmx edmxSchema
+var edmxParseError error
+var hasParsedEdmx bool = false
+
+func getParsedEdmx() (edmxSchema, error) {
+	if !hasParsedEdmx {
+		parsedEdmx, edmxParseError = parseEdmx([]byte(edmxXmlString))
+		hasParsedEdmx = true
+	}
+	return parsedEdmx, edmxParseError
+}
+
 func Test_Parse_edmx(t *testing.T) {
-	edmx, err := parseEdmx([]byte(edmxXmlString))
+	edmx, err := getParsedEdmx()
 	assert.NoError(t, err)
 	assert.Equal(t, "Trippin", edmx.Namespace)
 
