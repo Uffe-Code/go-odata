@@ -29,7 +29,7 @@ func Test_Generate_definition(t *testing.T) {
 	peopleSet := edmx.EntitySets["People"]
 
 	assert.Equal(t, `func PersonDefinition() odataClient.ODataModelCollection[Person] {
-	return modelDefinition{name: "Person", url: "People"}
+	return modelDefinition[Person]{name: "Person", url: "People"}
 }`, generateModelDefinition(peopleSet))
 }
 

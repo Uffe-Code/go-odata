@@ -22,8 +22,8 @@ func generateModelDefinition(set edmxEntitySet) string {
 	entityType := set.getEntityType()
 
 	return fmt.Sprintf(`func %sDefinition() odataClient.ODataModelCollection[%s] {
-	return modelDefinition{name: "%s", url: "%s"}
-}`, entityType.Name, entityType.Name, entityType.Name, set.Name)
+	return modelDefinition[%s]{name: "%s", url: "%s"}
+}`, entityType.Name, entityType.Name, entityType.Name, entityType.Name, set.Name)
 }
 
 func generateEnumStruct(enum edmxEnumType) string {
@@ -69,9 +69,9 @@ const (`, enum.Name, goType)
 func generateCodeFromSchema(packageName string, dataService edmxDataServices) string {
 	goCode := fmt.Sprintf(`package %s
 
-import "github.com/Uffe-Code/go-nullable"
+import "github.com/Uffe-Code/go-nullable/nullable"
 
-type modelDefinition[T any] struct { name string, url string }
+type modelDefinition[T any] struct { name string; url string }
 
 func (md modelDefinition[T]) Name() string {
 	return md.name
