@@ -11,14 +11,14 @@ func Test_Generate_struct(t *testing.T) {
 	peopleSet := edmx.EntitySets["People"]
 
 	assert.Equal(t, `type Person struct {
-	AddressInfo []interface{}
+	AddressInfo []Location
 	Age nullable.Nullable[int64]
 	Emails []string
-	FavoriteFeature interface{}
-	Features []interface{}
+	FavoriteFeature Feature
+	Features []Feature
 	FirstName string
-	Gender interface{}
-	HomeAddress nullable.Nullable[interface{}]
+	Gender PersonGender
+	HomeAddress nullable.Nullable[Location]
 	LastName nullable.Nullable[string]
 	MiddleName nullable.Nullable[string]
 	UserName string

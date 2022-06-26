@@ -6,17 +6,6 @@ import (
 	"strings"
 )
 
-type definition struct {
-	name       string
-	url        string
-	properties []property
-}
-
-type property struct {
-	name     string
-	dataType string
-}
-
 type edmxEntitySet struct {
 	schema     edmxSchema
 	Name       string `xml:"Name,attr"`
@@ -32,6 +21,7 @@ type edmxProperty struct {
 	Name     string `xml:"Name,attr"`
 	Type     string `xml:"Type,attr"`
 	Nullable string `xml:"Nullable,attr"`
+	schema   edmxSchema
 }
 
 func (p edmxProperty) goType() string {
@@ -47,6 +37,16 @@ func (p edmxProperty) goType() string {
 		goType = "string"
 	case "Edm.Int64":
 		goType = "int64"
+	default:
+		if strings.HasPrefix(propertyType, p.schema.Namespace) {
+			entityTypeKey := strings.Replace(propertyType, p.schema.Namespace+".", "", 1)
+			if enumType, ok := p.schema.EnumTypes[entityTypeKey]; ok {
+				goType = enumType.Name
+			}
+			if complexType, ok := p.schema.ComplexTypes[entityTypeKey]; ok {
+				goType = complexType.Name
+			}
+		}
 	}
 
 	if !isCollection && (p.Nullable == "" || strings.ToLower(p.Nullable) == "true") {
@@ -69,12 +69,13 @@ type rawEdmxEntityType struct {
 	Properties []edmxProperty `xml:"Property"`
 }
 
-func (e rawEdmxEntityType) toEdmxEntityType() edmxEntityType {
+func (e rawEdmxEntityType) toEdmxEntityType(schema edmxSchema) edmxEntityType {
 	entityType := edmxEntityType{
 		Name:       e.Name,
 		Properties: map[string]edmxProperty{},
 	}
 	for _, prop := range e.Properties {
+		prop.schema = schema
 		entityType.Properties[prop.Name] = prop
 	}
 	return entityType
@@ -87,9 +88,11 @@ type edmxXmlData struct {
 }
 
 type edmxSchema struct {
-	Namespace   string
-	EntityTypes map[string]edmxEntityType
-	EntitySets  map[string]edmxEntitySet
+	Namespace    string
+	EntityTypes  map[string]edmxEntityType
+	EntitySets   map[string]edmxEntitySet
+	EnumTypes    map[string]edmxEnumType
+	ComplexTypes map[string]edmxEntityType
 }
 
 type edmxDataServices struct {
@@ -97,20 +100,24 @@ type edmxDataServices struct {
 }
 
 type rawEdmxSchema struct {
-	XMLName     xml.Name            `xml:"Schema"`
-	Namespace   string              `xml:"Namespace,attr"`
-	EntityTypes []rawEdmxEntityType `xml:"EntityType"`
-	Containers  []rawEdmxContainer  `xml:"EntityContainer"`
+	XMLName      xml.Name            `xml:"Schema"`
+	Namespace    string              `xml:"Namespace,attr"`
+	EntityTypes  []rawEdmxEntityType `xml:"EntityType"`
+	Containers   []rawEdmxContainer  `xml:"EntityContainer"`
+	EnumTypes    []edmxEnumType      `xml:"EnumType"`
+	ComplexTypes []rawEdmxEntityType `xml:"ComplexType"`
 }
 
 func (s rawEdmxSchema) toSchema() edmxSchema {
 	schema := &edmxSchema{
-		Namespace:   s.Namespace,
-		EntityTypes: map[string]edmxEntityType{},
-		EntitySets:  map[string]edmxEntitySet{},
+		Namespace:    s.Namespace,
+		EntityTypes:  map[string]edmxEntityType{},
+		EntitySets:   map[string]edmxEntitySet{},
+		EnumTypes:    map[string]edmxEnumType{},
+		ComplexTypes: map[string]edmxEntityType{},
 	}
 	for _, e := range s.EntityTypes {
-		schema.EntityTypes[e.Name] = e.toEdmxEntityType()
+		schema.EntityTypes[e.Name] = e.toEdmxEntityType(*schema)
 	}
 	for _, c := range s.Containers {
 		for _, s := range c.EntitySets {
@@ -118,11 +125,29 @@ func (s rawEdmxSchema) toSchema() edmxSchema {
 			schema.EntitySets[s.Name] = s
 		}
 	}
+	for _, enum := range s.EnumTypes {
+		schema.EnumTypes[enum.Name] = enum
+	}
+	for _, complexType := range s.ComplexTypes {
+		schema.ComplexTypes[complexType.Name] = complexType.toEdmxEntityType(*schema)
+	}
 	return *schema
 }
 
 type rawEdmxContainer struct {
 	EntitySets []edmxEntitySet `xml:"EntitySet"`
+}
+
+type edmxEnumType struct {
+	XMLName xml.Name         `xml:"EnumType"`
+	Name    string           `xml:"Name,attr"`
+	Members []edmxEnumMember `xml:"Member"`
+}
+
+type edmxEnumMember struct {
+	XMLName xml.Name `xml:"Member"`
+	Name    string   `xml:"Name,attr"`
+	Value   string   `xml:"Value,attr"`
 }
 
 func parseEdmx(xmlData []byte) (edmxSchema, error) {
@@ -146,18 +171,4 @@ func parseEdmx(xmlData []byte) (edmxSchema, error) {
 	}
 
 	return dataServices.Schemas[0].toSchema(), nil
-}
-
-func (d *definition) applyEdmxEntitySet(json edmxEntitySet) {
-	d.url = json.Name
-}
-
-func (d *definition) applyEdmxEntityType(entity edmxEntityType) {
-	d.name = entity.Name
-	for _, edmxProp := range entity.Properties {
-		d.properties = append(d.properties, property{
-			name:     edmxProp.Name,
-			dataType: edmxProp.goType(),
-		})
-	}
 }
