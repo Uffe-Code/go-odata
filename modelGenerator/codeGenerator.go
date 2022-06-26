@@ -21,8 +21,8 @@ func generateModelStruct(entityType edmxEntityType) string {
 func generateModelDefinition(set edmxEntitySet) string {
 	entityType := set.getEntityType()
 
-	return fmt.Sprintf(`func New%sCollection() odataClient.ODataModelCollection[%s] {
-	return modelDefinition[%s]{name: "%s", url: "%s"}
+	return fmt.Sprintf(`func New%sCollection(wrapper odataClient.Wrapper) odataClient.ODataModelCollection[%s] {
+	return modelDefinition[%s]{client: wrapper.ODataClient(), name: "%s", url: "%s"}
 }`, entityType.Name, entityType.Name, entityType.Name, entityType.Name, set.Name)
 }
 
@@ -74,7 +74,7 @@ import (
 	"github.com/Uffe-Code/go-odata/odataClient"
 )
 
-type modelDefinition[T any] struct { name string; url string }
+type modelDefinition[T any] struct { client odataClient.ODataClient; name string; url string }
 
 func (md modelDefinition[T]) Name() string {
 	return md.name
@@ -84,8 +84,8 @@ func (md modelDefinition[T]) Url() string {
 	return md.url
 }
 
-func (md modelDefinition[T]) DataSet(client odataClient.ODataClient) odataClient.ODataDataSet[T, odataClient.ODataModelDefinition[T]] {
-	return odataClient.NewDataSet[T](client, md)
+func (md modelDefinition[T]) DataSet() odataClient.ODataDataSet[T, odataClient.ODataModelDefinition[T]] {
+	return odataClient.NewDataSet[T](md.client, md)
 }
 
 `, packageName)

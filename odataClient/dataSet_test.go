@@ -18,10 +18,11 @@ type testModel struct {
 }
 
 type testModelDefinition[T any] struct {
+	client ODataClient
 }
 
-func (t testModelDefinition[T]) DataSet(client ODataClient) ODataDataSet[T, ODataModelDefinition[T]] {
-	return NewDataSet[T](client, t)
+func (t testModelDefinition[T]) DataSet() ODataDataSet[T, ODataModelDefinition[T]] {
+	return NewDataSet[T](t.client, t)
 }
 
 func (t testModelDefinition[T]) Name() string {
@@ -32,20 +33,20 @@ func (t testModelDefinition[T]) Url() string {
 	return "People"
 }
 
-func newTestModelDefinition() ODataModelCollection[testModel] {
-	return testModelDefinition[testModel]{}
+func newTestModelDefinition(wrapper Wrapper) ODataModelCollection[testModel] {
+	return testModelDefinition[testModel]{client: wrapper.ODataClient()}
 }
 
 func TestNewDataSet(t *testing.T) {
 	client := New("http://test.api/")
-	dataSet := newTestModelDefinition().DataSet(client)
+	dataSet := newTestModelDefinition(client).DataSet()
 	assert.Equal(t, "http://test.api/People", dataSet.getCollectionUrl())
 	assert.Equal(t, "http://test.api/People(5)", dataSet.getSingleUrl(5))
 }
 
 func TestNewDataSet_WithoutSlash(t *testing.T) {
 	client := New("http://test.api")
-	dataSet := newTestModelDefinition().DataSet(client)
+	dataSet := newTestModelDefinition(client).DataSet()
 	assert.Equal(t, "http://test.api/People", dataSet.getCollectionUrl())
 	assert.Equal(t, "http://test.api/People(5)", dataSet.getSingleUrl(5))
 }
@@ -73,8 +74,8 @@ func TestOdataDataSet_Single(t *testing.T) {
 	defer testServer.Close()
 
 	client := New(testServer.URL)
-	def := newTestModelDefinition()
-	dataSet := def.DataSet(client)
+	def := newTestModelDefinition(client)
+	dataSet := def.DataSet()
 	model, err := dataSet.Single(5)
 	assert.NoError(t, err)
 	assert.Equal(t, 5, model.Id)
@@ -117,8 +118,8 @@ func TestOdataDataSet_List(t *testing.T) {
 	defer testServer.Close()
 
 	client := New(testServer.URL)
-	def := newTestModelDefinition()
-	dataSet := def.DataSet(client)
+	def := newTestModelDefinition(client)
+	dataSet := def.DataSet()
 	models, _ := dataSet.List(ODataFilter{})
 
 	i := 0

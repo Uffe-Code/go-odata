@@ -16,7 +16,13 @@ type oDataClient struct {
 
 // ODataClient represents a connection to the OData REST API
 type ODataClient interface {
+	Wrapper
 	AddHeader(key string, value string)
+}
+
+// Wrapper represents a wrapper around the OData client if you have build own code around the OData itself, for authentication etc
+type Wrapper interface {
+	ODataClient() ODataClient
 }
 
 func New(baseUrl string) ODataClient {
@@ -42,6 +48,11 @@ func (client *oDataClient) AddHeader(key string, value string) {
 	client.headers[strings.ToLower(key)] = value
 }
 
+// ODataClient will return self, so it also works as a wrapper in case we don't have a wrapper
+func (client *oDataClient) ODataClient() ODataClient {
+	return client
+}
+
 func (client oDataClient) mapHeadersToRequest(req *http.Request) {
 	for key, value := range client.headers {
 		req.Header.Set(key, value)
@@ -55,7 +66,7 @@ func executeHttpRequest[T interface{}](client oDataClient, req *http.Request) (T
 	if err != nil {
 		return responseData, err
 	}
-	defer response.Body.Close()
+	defer func() { _ = response.Body.Close() }()
 	body, err := ioutil.ReadAll(response.Body)
 	if err != nil {
 		return responseData, err

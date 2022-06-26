@@ -7,5 +7,5 @@ type ODataModelDefinition[T any] interface {
 
 type ODataModelCollection[T any] interface {
 	ODataModelDefinition[T]
-	DataSet(ODataClient) ODataDataSet[T, ODataModelDefinition[T]]
+	DataSet() ODataDataSet[T, ODataModelDefinition[T]]
 }
