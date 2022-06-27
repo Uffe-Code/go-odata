@@ -73,6 +73,7 @@ func generateCodeFromSchema(packageName string, dataService edmxDataServices) st
 import (
 	"github.com/Uffe-Code/go-nullable/nullable"
 	"github.com/Uffe-Code/go-odata/odataClient"
+	"github.com/Uffe-Code/go-odata/date"
 	"time"
 )
 

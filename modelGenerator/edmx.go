@@ -49,16 +49,24 @@ func (p edmxProperty) goType() string {
 	switch propertyType {
 	case "Edm.String":
 		goType = "string"
+	case "Edm.Int16":
+		goType = "int16"
 	case "Edm.Int32":
 		goType = "int32"
 	case "Edm.Int64":
 		goType = "int64"
-	case "Edm.Double":
+	case "Edm.Double", "Edm.Decimal", "Edm.Float":
 		goType = "float64"
 	case "Edm.Boolean":
 		goType = "bool"
-	case "Edm.DateTime", "Edm.DateTimeOffset", "Edm.Date": // todo: consider using a separate data type for dates without time
+	case "Edm.DateTime", "Edm.DateTimeOffset":
 		goType = "time.Time"
+	case "Edm.Date":
+		goType = "date.Date"
+	case "Edm.Byte":
+		goType = "byte"
+	case "Edm.SByte":
+		goType = "int8"
 	default:
 		if strings.HasPrefix(propertyType, p.schema.Namespace) {
 			entityTypeKey := strings.Replace(propertyType, p.schema.Namespace+".", "", 1)
