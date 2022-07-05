@@ -30,6 +30,7 @@ func New(baseUrl string) ODataClient {
 		baseUrl: strings.TrimRight(baseUrl, "/") + "/",
 		headers: map[string]string{
 			"DataServiceVersion": "4.0",
+			"OData-Version":      "4.0",
 			"Accept":             "application/json",
 		},
 		defaultPageSize: 1000,
