@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 )
 
 type odataDataSet[ModelT any, Def ODataModelDefinition[ModelT]] struct {
@@ -53,13 +54,17 @@ type ODataFilter struct {
 }
 
 func (filter ODataFilter) toQueryString() string {
-	return fmt.Sprintf("$filter=%s", filter.Filter)
+	queryStrings := url.Values{}
+	if filter.Filter != "" {
+		queryStrings.Add("filter", filter.Filter)
+	}
+	return queryStrings.Encode()
 }
 
 // Single model from the API by ID
 func (dataSet odataDataSet[ModelT, Def]) Single(id string) (ModelT, error) {
-	url := dataSet.getSingleUrl(id)
-	request, err := http.NewRequest("GET", url, nil)
+	requestUrl := dataSet.getSingleUrl(id)
+	request, err := http.NewRequest("GET", requestUrl, nil)
 	var responseModel ModelT
 	if err != nil {
 		return responseModel, err
@@ -80,9 +85,9 @@ func (dataSet odataDataSet[ModelT, Def]) List(filter ODataFilter) (<-chan ModelT
 		defer close(ch)
 		defer close(errs)
 
-		url := fmt.Sprintf("%s?$top=%d&$skip=0&%s", dataSet.getCollectionUrl(), dataSet.client.defaultPageSize, filter.toQueryString())
-		for url != "" {
-			request, err := http.NewRequest("GET", url, nil)
+		requestUrl := fmt.Sprintf("%s?$top=%d&$skip=0&%s", dataSet.getCollectionUrl(), dataSet.client.defaultPageSize, filter.toQueryString())
+		for requestUrl != "" {
+			request, err := http.NewRequest("GET", requestUrl, nil)
 			if err != nil {
 				errs <- err
 				return
@@ -99,7 +104,7 @@ func (dataSet odataDataSet[ModelT, Def]) List(filter ODataFilter) (<-chan ModelT
 			if len(responseData.Value) < dataSet.client.defaultPageSize {
 				return
 			}
-			url = responseData.NextLink
+			requestUrl = responseData.NextLink
 		}
 	}()
 
@@ -108,13 +113,13 @@ func (dataSet odataDataSet[ModelT, Def]) List(filter ODataFilter) (<-chan ModelT
 
 // Insert a model to the API
 func (dataSet odataDataSet[ModelT, Def]) Insert(model ModelT) (ModelT, error) {
-	url := dataSet.getCollectionUrl()
+	requestUrl := dataSet.getCollectionUrl()
 	var result ModelT
 	jsonData, err := json.Marshal(model)
 	if err != nil {
 		return result, err
 	}
-	request, err := http.NewRequest("POST", url, bytes.NewReader(jsonData))
+	request, err := http.NewRequest("POST", requestUrl, bytes.NewReader(jsonData))
 	if err != nil {
 		return result, err
 	}
@@ -125,13 +130,13 @@ func (dataSet odataDataSet[ModelT, Def]) Insert(model ModelT) (ModelT, error) {
 
 // Update a model in the API
 func (dataSet odataDataSet[ModelT, Def]) Update(id string, model ModelT) (ModelT, error) {
-	url := dataSet.getSingleUrl(id)
+	requestUrl := dataSet.getSingleUrl(id)
 	var result ModelT
 	jsonData, err := json.Marshal(model)
 	if err != nil {
 		return result, err
 	}
-	request, err := http.NewRequest("POST", url, bytes.NewReader(jsonData))
+	request, err := http.NewRequest("POST", requestUrl, bytes.NewReader(jsonData))
 	if err != nil {
 		return result, err
 	}
@@ -142,8 +147,8 @@ func (dataSet odataDataSet[ModelT, Def]) Update(id string, model ModelT) (ModelT
 
 // Delete a model from the API
 func (dataSet odataDataSet[ModelT, Def]) Delete(id string) error {
-	url := dataSet.getSingleUrl(id)
-	request, err := http.NewRequest("DELETE", url, nil)
+	requestUrl := dataSet.getSingleUrl(id)
+	request, err := http.NewRequest("DELETE", requestUrl, nil)
 	if err != nil {
 		return err
 	}
