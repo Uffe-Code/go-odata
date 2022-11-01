@@ -56,7 +56,7 @@ type ODataFilter struct {
 func (filter ODataFilter) toQueryString() string {
 	queryStrings := url.Values{}
 	if filter.Filter != "" {
-		queryStrings.Add("filter", filter.Filter)
+		queryStrings.Add("$filter", filter.Filter)
 	}
 	return queryStrings.Encode()
 }
